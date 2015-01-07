@@ -1,23 +1,18 @@
-var fs = require('fs')
+var Promise = require('promise');
+var readFile = Promise.denodeify(require('fs').readFile);
+var writeFile = Promise.denodeify(require('fs').readFile);
 
 var Database = function Database (data) {
   this.users = data && data.users || {};
   this.save = function save(path){
-    try {
-      fs.writeFileSync(path, JSON.stringify(this));
-      return true;
-    } catch (err) {
-      return false;
-    }
+    return writeFile(path, JSON.stringify(this));
   }
 };
 
 module.exports.Database = Database;
 
 module.exports.load = function load (path) {
-  try {
-    return new Database(JSON.parse(fs.readFileSync(path, 'utf8')));
-  } catch (err) {
-    return;
-  }
+  return readFile(path, 'utf8').then(function (res){
+    return new Database(JSON.parse(res));
+  });
 }

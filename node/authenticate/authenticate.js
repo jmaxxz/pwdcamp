@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+var Promise = require('promise');
 var cli = require('cli');
 var db = require('./database');
 var User = require('./user');
@@ -10,23 +11,42 @@ cli.parse({
 });
 
 cli.main(function(args, options) {
-  var database = !options.init && db.load(path) || new db.Database();
   var username = args[0] || '';
   var password = args[1] || '';
 
-  if (options.add) {
-    if(database.users[username]) return this.fatal('User Exists');
-    //TODO: the following line adds a new user to the database
-    //      you may with to change how this works for your program.
-    database.users[username] = new User({ username: username });
+  var afterDbLoad = function afterDbLoad (database) {
+    return new Promise(function (fulfill, reject) {
+      if (options.add) {
+        if(database.users[username]) reject('User Exists');
+        //TODO: the following line adds a new user to the database
+        //      you may with to change how this works for your program.
+        database.users[username] = new User({ username: username });
 
-    if (!database.save(path)) this.fatal("Could not save database.");
-  } else {//Authenticate mode
-    //TODO: Add some form of authentication to determine if correct
-    //      credentials were presented.
-    if (!database.users[username]) this.fatal("Invalid user");
-  }
+        database.save(path).then(fulfill, function () { reject("Could not save database."); });
+      } else {//Authenticate mode
+        //TODO: Add some form of authentication to determine if correct
+        //      credentials were presented.
+        if (!database.users[username]) reject("Invalid user");
+      }
 
-  this.output('Success');
-  this.exit();
+      fulfill();
+    });
+  };
+
+  //Execution starts here
+  var run;
+  if(!options.init)
+    run = db.load(path).then(afterDbLoad, function () {
+      afterDbLoad(new db.Database());
+    });
+  else
+    run = afterDbLoad(new db.Database());
+
+  run.then(function(){ 
+    cli.output('Success');
+    cli.exit();
+  }, function(msg){ 
+    cli.fatal(msg);
+  });
+
 });
