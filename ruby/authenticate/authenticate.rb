@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
 require 'optparse'
+require 'json'
+load 'database.rb'
+load 'user.rb'
 
 Options = Struct.new(:addMode, :initMode, :username, :password)
 
@@ -30,14 +33,28 @@ class AuthenticateOpts
 end
 
 options = AuthenticateOpts.parse(ARGV)
-options.username = ARGV.pop()
 options.password = ARGV.pop()
+options.username = ARGV.pop()
+path = 'database.json'
 
-puts !options.initMode ? 'read from disk' : 'make it up'
+database = !options.initMode && Database.load(path) || Database.new()
 
 if options.addMode
-	puts 'I see you want to add a user'
+	if database.users.has_key?(options.username)
+		$stderr.puts 'User Exists'
+		exit 1
+	end
+	database.users[options.username] = User.new options.username
+	if !database.save(path)
+		$stderr.puts 'Could not save database.'
+		exit 1
+	end
 else
-	puts 'Authentication time'
+	if !database.users.has_key?(options.username)
+		$stderr.puts 'Invalid user'
+		exit 1
+	end
+
+	puts 'Success'
 end
 
