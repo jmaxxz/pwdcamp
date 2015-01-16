@@ -23,11 +23,16 @@ if args.add:
 	if args.username in database['users']:
 		sys.stderr.write('User Exists\n')
 		sys.exit(1)
+
+	# TODO: the following line adds a new user to the database
+	#      you may with to change how this works for your program.
 	database['users'][args.username] = create_user(args.username)
 	if not save_database(database, path):
 		sys.stderr.write('Could not save database.\n')
 		sys.exit(1)
 else:
+	# TODO: Add some form of authentication to determine if correct
+	#      credentials were presented.
 	if args.username not in database['users']:
 		sys.stderr.write('Invalid user\n')
 		sys.exit(1)	

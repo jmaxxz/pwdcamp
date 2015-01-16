@@ -44,12 +44,16 @@ if options.addMode
 		$stderr.puts 'User Exists'
 		exit 1
 	end
+	# TODO: the following line adds a new user to the database
+	#      you may with to change how this works for your program.
 	database.users[options.username] = User.new options.username
 	if !database.save(path)
 		$stderr.puts 'Could not save database.'
 		exit 1
 	end
 else
+	# TODO: Add some form of authentication to determine if correct
+	#      credentials were presented.
 	if !database.users.has_key?(options.username)
 		$stderr.puts 'Invalid user'
 		exit 1
