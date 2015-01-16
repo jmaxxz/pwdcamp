@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using ConsoleOptions;
 
 namespace authenticate
@@ -32,17 +35,23 @@ namespace authenticate
             {
                 if(database.Users.ContainsKey(username)) ExitWithError("User Exists");
 
-                //TODO: the following line adds a new user to the database
-                //      you may with to change how this works for your program.
-                database.Users[username] = new User() { UserName = username };
+                var salter = new RNGCryptoServiceProvider();
+                var saltBytes = new byte[12];
+                salter.GetBytes(saltBytes);
+                var saltString = Convert.ToBase64String(saltBytes);
+                var hasher = SHA1.Create();
+                var hashedPwBytes = hasher.ComputeHash(Encoding.UTF8.GetBytes(saltString + password));
+                var hashedPwString = Convert.ToBase64String(hashedPwBytes);
+                database.Users[username] = new User() { UserName = username, Password = hashedPwString, Salt = saltString };
 
                 if (!database.TrySave(path)) ExitWithError("Could not save database.");
             }
             else //Authenticate mode
             {
-                //TODO: Add some form of authentication to determine if correct
-                //      credentials were presented.
                 if (!database.Users.ContainsKey(username)) ExitWithError("Invalid user");
+                var user = database.Users[username];
+                var authenticated = user.Password.Equals(Hash(user.Salt + password));
+                Console.WriteLine(authenticated ? "Authenticated" : "Auth fail");
             }
 
             Console.WriteLine("Success");
@@ -52,6 +61,13 @@ namespace authenticate
         {
             Console.Error.WriteLine("ERROR: " + p);
             Environment.Exit(1);
+        }
+
+        private static string Hash(string s)
+        {
+            var hasher = SHA1.Create();
+            var hashedPwBytes = hasher.ComputeHash(Encoding.UTF8.GetBytes(s));
+            return Convert.ToBase64String(hashedPwBytes);
         }
     }
 }
