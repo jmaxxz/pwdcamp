@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using ConsoleOptions;
 
 namespace authenticate
@@ -32,17 +35,18 @@ namespace authenticate
             {
                 if(database.Users.ContainsKey(username)) ExitWithError("User Exists");
 
-                //TODO: the following line adds a new user to the database
-                //      you may with to change how this works for your program.
-                database.Users[username] = new User() { UserName = username };
+                var hasher = SHA1.Create();
+                var hashedPwBytes = hasher.ComputeHash(Encoding.UTF8.GetBytes(password));
+                var hashedPwString = Convert.ToBase64String(hashedPwBytes);
+                database.Users[username] = new User() { UserName = username, Password = hashedPwString };
 
                 if (!database.TrySave(path)) ExitWithError("Could not save database.");
             }
             else //Authenticate mode
             {
-                //TODO: Add some form of authentication to determine if correct
-                //      credentials were presented.
                 if (!database.Users.ContainsKey(username)) ExitWithError("Invalid user");
+                var authenticated = database.Users[username].Password.Equals(Hash(password));
+                Console.WriteLine(authenticated ? "Authenticated" : "Auth fail");
             }
 
             Console.WriteLine("Success");
@@ -52,6 +56,13 @@ namespace authenticate
         {
             Console.Error.WriteLine("ERROR: " + p);
             Environment.Exit(1);
+        }
+
+        private static string Hash(string s)
+        {
+            var hasher = SHA1.Create();
+            var hashedPwBytes = hasher.ComputeHash(Encoding.UTF8.GetBytes(s));
+            return Convert.ToBase64String(hashedPwBytes);
         }
     }
 }
