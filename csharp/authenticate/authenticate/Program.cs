@@ -12,7 +12,7 @@ namespace authenticate
 
             string username = "";
             string password = "";
-            string path = "database.json";
+            const string path = "database.json";
 
 
             var options = new Options("Creates and manages a simple database of users.")
@@ -25,27 +25,30 @@ namespace authenticate
 
             if (!options.Parse(args)) ExitWithError("Invalid options");
 
-            Database database = null;
+            Database database;
             database = !newDbMode && Database.TryLoad(path, out database) ? database : new Database();
 
             if(addMode)
             {
                 if(database.Users.ContainsKey(username)) ExitWithError("User Exists");
 
-                //TODO: the following line adds a new user to the database
-                //      you may with to change how this works for your program.
-                database.Users[username] = new User() { UserName = username };
+                var crypticPw = BCrypt.Net.BCrypt.HashPassword(password);
+                database.Users[username] = new User() { UserName = username, Password = crypticPw };
 
                 if (!database.TrySave(path)) ExitWithError("Could not save database.");
             }
             else //Authenticate mode
             {
-                //TODO: Add some form of authentication to determine if correct
-                //      credentials were presented.
-                if (!database.Users.ContainsKey(username)) ExitWithError("Invalid user");
+                User user;
+                if (database.Users.TryGetValue(username, out user))
+                {
+                    var authenticated = BCrypt.Net.BCrypt.Verify(password, user.Password);
+                    Console.WriteLine(authenticated ? "Authenticated" : "Not Authenticated");
+                }
+                else ExitWithError("Invalid user");
             }
 
-            Console.WriteLine("Success");
+            Console.WriteLine("Program Complete");
         }
 
         private static void ExitWithError(string p)
