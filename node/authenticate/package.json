@@ -11,5 +11,8 @@
   "dependencies": {
     "cli": "~0.6.5",
     "promise": "~6.0.1"
+  },
+  "devDependencies": {
+    "bcrypt": "^0.8.0"
   }
 }
