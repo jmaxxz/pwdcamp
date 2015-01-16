@@ -1,5 +1,6 @@
 ﻿using System;
 using ConsoleOptions;
+using BCrypt.Net;
 
 namespace authenticate
 {
@@ -13,6 +14,7 @@ namespace authenticate
             string username = "";
             string password = "";
             string path = "database.json";
+            var hasher = new BCrypt.Net.BCrypt();
 
 
             var options = new Options("Creates and manages a simple database of users.")
@@ -32,17 +34,26 @@ namespace authenticate
             {
                 if(database.Users.ContainsKey(username)) ExitWithError("User Exists");
 
-                //TODO: the following line adds a new user to the database
-                //      you may with to change how this works for your program.
-                database.Users[username] = new User() { UserName = username };
+                var salt = BCrypt.Net.BCrypt.GenerateSalt(4);
+                var hash = BCrypt.Net.BCrypt.HashPassword(password, salt);
+
+                database.Users[username] = new User() { UserName = username, Hash = hash };
 
                 if (!database.TrySave(path)) ExitWithError("Could not save database.");
             }
             else //Authenticate mode
             {
-                //TODO: Add some form of authentication to determine if correct
-                //      credentials were presented.
-                if (!database.Users.ContainsKey(username)) ExitWithError("Invalid user");
+
+                if (!database.Users.ContainsKey(username))
+                {
+                    ExitWithError("Authentication failed.");
+                }
+                else
+                {
+                    var existingHash = database.Users[username].Hash;
+                    var verified = BCrypt.Net.BCrypt.Verify(password, existingHash);
+                    if (!verified) ExitWithError("Authentication failed");
+                }
             }
 
             Console.WriteLine("Success");
