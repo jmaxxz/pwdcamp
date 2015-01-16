@@ -4,6 +4,7 @@ var cli = require('cli');
 var db = require('./database');
 var User = require('./user');
 var path = 'database.json';
+var bcrypt = require('bcrypt');
 
 cli.parse({
   add : ['a', 'Adds a new user'],
@@ -18,15 +19,21 @@ cli.main(function(args, options) {
     return new Promise(function (fulfill, reject) {
       if (options.add) {
         if(database.users[username]) reject('User Exists');
-        //TODO: the following line adds a new user to the database
-        //      you may with to change how this works for your program.
-        database.users[username] = new User({ username: username });
 
-        database.save(path).then(fulfill, function () { reject("Could not save database."); });
+        var salt = bcrypt.genSaltSync(10);
+        var hash = bcrypt.hashSync(password, salt);
+        
+        database.users[username] = new User({ username: username, password: hash });
+
+        database.save(path);//.then(fulfill, function () { console.dir('fails'); reject("Could not save database."); });
       } else {//Authenticate mode
-        //TODO: Add some form of authentication to determine if correct
-        //      credentials were presented.
-        if (!database.users[username]) reject("Invalid user");
+        var user = database.users[username];
+
+        if (!user) 
+          reject("Invalid user");
+
+        if (!bcrypt.compareSync(password, user.password))
+          reject("Login failed");
       }
 
       fulfill();

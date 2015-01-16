@@ -1,11 +1,17 @@
 var Promise = require('promise');
 var readFile = Promise.denodeify(require('fs').readFile);
-var writeFile = Promise.denodeify(require('fs').readFile);
+var writeFile = Promise.denodeify(require('fs').writeFile);
+
+var fs = require('fs');
 
 var Database = function Database (data) {
   this.users = data && data.users || {};
   this.save = function save(path){
-    return writeFile(path, JSON.stringify(this));
+  	// this doesn't write out the file
+  	//return writeFile(path, JSON.stringify(this));
+
+    // this works
+    fs.writeFileSync(path, JSON.stringify(this));
   }
 };
 
