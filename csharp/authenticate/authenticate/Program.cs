@@ -35,17 +35,22 @@ namespace authenticate
             {
                 if(database.Users.ContainsKey(username)) ExitWithError("User Exists");
 
+                var salter = new RNGCryptoServiceProvider();
+                var saltBytes = new byte[12];
+                salter.GetBytes(saltBytes);
+                var saltString = Convert.ToBase64String(saltBytes);
                 var hasher = SHA1.Create();
-                var hashedPwBytes = hasher.ComputeHash(Encoding.UTF8.GetBytes(password));
+                var hashedPwBytes = hasher.ComputeHash(Encoding.UTF8.GetBytes(saltString + password));
                 var hashedPwString = Convert.ToBase64String(hashedPwBytes);
-                database.Users[username] = new User() { UserName = username, Password = hashedPwString };
+                database.Users[username] = new User() { UserName = username, Password = hashedPwString, Salt = saltString };
 
                 if (!database.TrySave(path)) ExitWithError("Could not save database.");
             }
             else //Authenticate mode
             {
                 if (!database.Users.ContainsKey(username)) ExitWithError("Invalid user");
-                var authenticated = database.Users[username].Password.Equals(Hash(password));
+                var user = database.Users[username];
+                var authenticated = user.Password.Equals(Hash(user.Salt + password));
                 Console.WriteLine(authenticated ? "Authenticated" : "Auth fail");
             }
 
