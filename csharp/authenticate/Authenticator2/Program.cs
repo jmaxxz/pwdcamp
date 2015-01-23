@@ -1,10 +1,20 @@
 ﻿using System;
+using System.Security.Cryptography;
 using ConsoleOptions;
 
-namespace authenticate
+namespace Authenticator2
 {
-    class Program
+    static class Program
     {
+        private static string ComputeHash(string username, string password)
+        {
+            HashAlgorithm algorithm = new SHA256Managed();
+            // use 'username' as a basic salt - not a good method in general, but ok for this example; at least it's guaranteed to be unique
+            byte[] data = System.Text.Encoding.UTF8.GetBytes(username + password);
+            data = algorithm.ComputeHash(data);
+            return Convert.ToBase64String(data);
+        }
+
         static void Main(string[] args)
         {
             bool addMode = false;
@@ -12,37 +22,34 @@ namespace authenticate
 
             string username = "";
             string password = "";
-            string path = "database.json";
+            const string path = "database.json";
 
 
             var options = new Options("Creates and manages a simple database of users.")
             {
                 new Option(new[]{"a","add"}, ()=>addMode=true, "Adds a new user"),
-                new Option((s)=>username=s.ToLowerInvariant(), "username", "The username to be used"),
-                new Option((s)=>password=s, "password", "The password of the user"),
+                new Option(s=>username=s.ToLowerInvariant(), "username", "The username to be used"),
+                new Option(s=>password=s, "password", "The password of the user"),
                 new Option(new[]{"i","init"}, ()=>newDbMode=true, "Does not attempt to load existing database")
             };
 
             if (!options.Parse(args)) ExitWithError("Invalid options");
 
-            Database database = null;
-            database = !newDbMode && Database.TryLoad(path, out database) ? database : new Database();
+            Database database = !newDbMode && Database.TryLoad(path, out database) ? database : new Database();
 
             if(addMode)
             {
                 if(database.Users.ContainsKey(username)) ExitWithError("User Exists");
 
-                //TODO: the following line adds a new user to the database
-                //      you may with to change how this works for your program.
-                database.Users[username] = new User() { UserName = username };
+                // add the new user to the database
+                database.Users[username] = new User { UserName = username, PassHash = ComputeHash(username, password)};
 
                 if (!database.TrySave(path)) ExitWithError("Could not save database.");
             }
             else //Authenticate mode
             {
-                //TODO: Add some form of authentication to determine if correct
-                //      credentials were presented.
-                if (!database.Users.ContainsKey(username)) ExitWithError("Invalid user");
+                // Determine if correct credentials were presented.
+                if (!database.Users.ContainsKey(username) || database.Users[username].PassHash != ComputeHash(username, password)) ExitWithError("Invalid user");
             }
 
             Console.WriteLine("Success");
